@@ -1,4 +1,4 @@
-import { CenterLoading, GameServiceProps, useComponentRefresh, GameServiceWrapper } from "gamez";
+import { CenterLoading, GameServiceProps, GameServiceWrapper } from "gamez";
 import { useEffect, useState } from "react";
 import { CashierChaos, emptyCash } from "./CashierChaos";
 import { Instructions } from "./components/Instructions";
@@ -12,10 +12,14 @@ function EndOverlay({
   reason,
   onRestart,
   onHome,
+  onNextLevel,
+  onRestartLevel
 }: {
-  reason: EndReason;
-  onRestart: () => void;
-  onHome: () => void;
+  reason: EndReason,
+  onRestart: () => void,
+  onHome: () => void,
+  onNextLevel: () => void,
+  onRestartLevel: () => void,
 }) {
   const title =
     reason === "success" ? "Level cleared!" : reason === "timeout" ? "Time’s up!" : "Game Over!";
@@ -34,9 +38,19 @@ function EndOverlay({
           <button className="rounded-xl bg-zinc-700 px-4 py-2 font-semibold" onClick={onHome}>
             Home
           </button>
+          {reason === "success" && (
+            <button className="rounded-xl bg-green-600 px-4 py-2 font-semibold" onClick={onNextLevel}>
+              Go to next level
+            </button>
+          )}
+          {(reason === "timeout" || reason === "error") && (
+            <button className="rounded-xl bg-green-600 px-4 py-2 font-semibold" onClick={onRestartLevel}>
+              Restart this level
+            </button>
+          )}
           <button className="rounded-xl bg-green-600 px-4 py-2 font-semibold" onClick={onRestart}>
-            Restart (Level 1)
-          </button>
+            Restart from level 1
+          </button>          
         </div>
       </div>
     </div>
@@ -46,12 +60,14 @@ function EndOverlay({
 function GameComponent({ 
   gs, 
   onRestartFromLevel1,
-}: GameServiceProps & { onRestartFromLevel1: () => void }) {
+  onNextLevel,
+}: GameServiceProps & { 
+  onRestartFromLevel1: () => void,
+  onNextLevel: (nextLevelIndex: number) => void,
+}) {
   const [isGameReady, setIsGameReady] = useState(false);
   const [showInstructions, setShowInstruction] = useState(!isInstructionsShownAlready);
   const [endReason, setEndReason] = useState<EndReason | null>(null);
-  const [restartKey, setRestartKey] = useState(0);
-  const refresh = useComponentRefresh();
 
   useEffect(() => {
     setIsGameReady(false);
@@ -75,19 +91,13 @@ function GameComponent({
           });
 
           gs.saveReport(report);
-          if (result === "success") gs.nextLevel();
-
-          // alert(`${result}!`);
           setEndReason(result as EndReason);
-
-          refresh();
         });
 
         setIsGameReady(true);
       })
       .catch((e) => {
         // handle asset loading error
-        // alert("error");
         console.log(e)
       });
 
@@ -100,9 +110,7 @@ function GameComponent({
 
   const restartFromLvl1 = () => {
     setEndReason(null);
-    setIsGameReady(false);
-    setRestartKey((k) => k + 1);
-  
+    setIsGameReady(false);  
     onRestartFromLevel1();
   };
 
@@ -111,6 +119,16 @@ function GameComponent({
     
     setShowInstruction(true);
     isInstructionsShownAlready = false;
+  };
+
+  const goNextLevel = () => {
+    setEndReason(null);
+    onNextLevel(gs.getCurrLevel() + 1);
+  };
+
+  const restartThisLevel = () => {
+    setEndReason(null);
+    onNextLevel(gs.getCurrLevel());
   };
 
   if (showInstructions) {
@@ -124,11 +142,11 @@ function GameComponent({
   return <ErrorBoundary fallback={<h2>Failed to load CashierChaos game. Please try again.</h2>}>
         <div className="relative h-full">
 
-          <GameServiceWrapper gs={gs} key={restartKey}>
+          <GameServiceWrapper gs={gs}>
             <CashierChaos />
           </GameServiceWrapper>
 
-          {endReason && <EndOverlay reason={endReason} onRestart={restartFromLvl1} onHome={goHome} />}
+          {endReason && <EndOverlay reason={endReason} onRestart={restartFromLvl1} onHome={goHome} onNextLevel={goNextLevel} onRestartLevel={restartThisLevel}/>}
         </div>
 
         </ErrorBoundary>
