@@ -97,3 +97,10 @@ src/
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+
+## Notes / Bugs / Changes
+See `BugsAndChanges.md` for:
+- Bugs found
+- Fixes/changes made
+- Tradeoffs / assumptions
